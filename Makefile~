@@ -1,0 +1,46 @@
+PREFIX := arm-none-eabi-
+CC := $(PREFIX)gcc
+OBJCOPY := $(PREFIX)objcopy
+
+SRCDIR := src
+OBJDIR := obj
+INCDIR := inc
+
+INCFLAGS = -Idrivers/inc -Iinc -ICMSIS/Include
+LDFLAGS = -static -nostartfiles -TSTM32G0B1RETX_FLASH.ld
+LDFLAGS += -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
+
+CFLAGS = -std=c11 -g3 -Os -fno-common -ffunction-sections -fdata-sections
+
+# These flags are specific for our board
+CFLAGS += -mcpu=cortex-m0plus -mthumb -msoft-float
+CFLAGS += -DSTM32G0B1xx
+
+SRCS = src/main.c
+# SRCS += drivers/src/*.c
+
+
+# Modify this SRCS line to add source files to compile
+all: image.bin
+
+image.bin: image.elf
+	$(OBJCOPY) -Obinary image.elf image.bin
+
+image.elf: $(SRCS)
+	$(CC) $^ -o $@ $(INCFLAGS) $(CFLAGS) $(LDFLAGS) $(LIBS)
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(INCFLAGS) $(CFLAGS) -c $< -o $@
+
+freertos:
+	cmake -S FreeRTOS/Source -B FreeRTOS/build
+	cmake --build FreeRTOS/build
+
+opencm3:
+	$(MAKE) -C libopencm3
+
+clean:
+	- rm image.elf image.bin obj/*
+	- rm -rf FreeRTOS/build
+
+.PHONY: all freertos opencm3 clean
